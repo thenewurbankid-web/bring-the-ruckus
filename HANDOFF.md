@@ -214,7 +214,29 @@ User directive: finish a working demo first, fixes later. No open issues stood b
 - **Parked (not started)**: balance (counter-punching dominates), night not measured for crowd or frame time on a real phone, all-male crowd, primitive fallback ignoring looks/outfits, `boxing-manager/` stray folder, WebLLM worker, items under "Untested" above.
 - **Still untested**: a real phone's GPU and touch, how the person looks up close, P2P looks.
 
+## Done (2026-10-04): standalone on GitHub Pages (BOX-12)
+
+The game is its own public repo, https://github.com/thenewurbankid-web/bring-the-ruckus, live at https://thenewurbankid-web.github.io/bring-the-ruckus/. Done in claude-quest's `public/boxing` first so both stay one codebase (commit "Standalone Boxing (BOX-12)"): Babylon 7.54.3, its glTF loader, Phaser 3.90.0 and Dexie 4.4.6 load from pinned jsDelivr URLs (the versions in `package.json`); `linkcrypto.js` is copied into `public/boxing/`; models, textures and the crowd atlas load through `new URL(..., import.meta.url)`, so no absolute `/boxing/` or `/vendor/` paths remain. `scripts/demo-e2e.mjs` takes `DEMO_URL`.
+- **Syncing the repo**: clone it, `rsync -a --exclude .git public/boxing/ <clone>/`, commit, push main (done once, as 4c4a687; the repo also has a `.nojekyll`). The user asked for this push in BOX-12; it is not a standing permission.
+- Checked: `npm test` 101 pass; `demo-e2e.mjs` at 375 px finished day and night fights with no console errors both locally and against the live Pages URL.
+- **Untested**: a real phone on Pages, P2P between two devices over Pages (HTTPS, WebRTC), jsDelivr being down (no fallback).
+
+## Done (2026-10-04): it feels like a game (BOX-13)
+
+The user said "the boxing game needs to feel like a game". `index.html` is now a phone-first screen game; the dashboard is gone. Commit bad4de0.
+- **Flow** (`flow.js`, pure logic, tested): Title (Play / Continue / Settings) → Fighter (name, look, stats, big controls) → Training (upgrade screen, + / − with confirm) → Opponent (4 archetype cards + Mirror, 3 or 6 rounds) → Fight → Result → Rematch / New opponent / Train / Title. Settings: sound, music (off by default), day/night, fight speed (default 4× so a fight takes about 2 minutes).
+- **Fight screen**: the 3D court fills the phone; HUD is two health bars, two stamina bars, round and clock; a bottom corner sheet between rounds with the coach's one-liner (from `cornerTip`, uses the RAG precedent when there is one) and five tactic buttons; speed and leave buttons (leave asks in-page). The broadcast bug, cam label and lower thirds from the arena are hidden by CSS here.
+- **Juice**: hit flash (red vignette when you are hit), camera shake and crowd swell on big punches, KO slow-mo + white flash, bells at round start and end. All sounds are synthesized in `sfx.js` (WebAudio, no files, no licences). Arena gained render-only `shake()` and `slowmo()` and a portrait camera (horizontal-fixed fov 0.92, dist x0.9, lower height).
+- **Result**: scorecard rows reveal one by one, then VICTORY / DEFEAT / DRAW stamps in (KO stamps at once), fight stats, XP (= training points, win 6, draw 4, loss 3), record, new unlocks.
+- **Progression**: record W-L-D, points spent on the Training screen (cost 1/2/3 by stat band), outfit unlocks by wins (1 varsity, 2 black jeans, 3 knit sweater, 4 gold top, 5 gold wraps); locked choices show LOCKED and a toast, and `lockedLook` resets a saved look that wears something not yet won.
+- **Debug drawer**: telemetry, exchange feed, RAG intel, LLM context, export/import, view and speed override. Open with `?debug` (DBG button) or a long-press (0.7 s) on the title logo. P2P moved to a bottom sheet on the Opponent screen ("Fight a friend instead"); rematch is hidden for P2P.
+- **Tests**: 108 pass (7 new for flow, progression, unlocks, scorecard, tips, settings). `node scripts/demo-e2e.mjs` rewritten for the new flow: Title, Settings, Fighter, Training, Opponent, corner, fight and result at 375 px, day then night, no console errors. Screenshots `public/boxing/qa/game-*.png`.
+- **Not built (needs art or a decision)**: night-court title background and opponent portraits (CSS gradients and initials stand in; drop `title-bg.webp` / `portraits/<key>.webp` and wire them in), a real home for crowd music.
+- **Untested**: a real phone (touch, long-press on the logo, safe-area insets, audio autoplay rules, sound levels), P2P through the new sheet, sound by ear, KO slow-mo and shake by eye, portrait camera framing at other aspect ratios, Settings → Music playback.
+
 ## Next jobs
+
+0. **Play BOX-13 on a phone** and tell me what feels off (see its untested list).
 
 1. **Check the person in a browser** (`npm run static -- 4792`, http://localhost:4792/boxing/): the fight view and the Look panel, using the untested list under BOX-3 above, and tell me what to fix (tint, hair, proportions, shoe heights).
 
