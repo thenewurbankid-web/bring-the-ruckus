@@ -4,6 +4,14 @@ Worktree `.claude/worktrees/boxing-manager-ai`, branch `worktree-boxing-manager-
 Live tracker: https://claude.ai/artifact/PRsPyaXBu4g9UpCFbPwP3K (its `db` holds `tasks/t01..t12`,
 `log/l01..l12`, `meta/status` and `meta/balance`; update them with ArtifactData and pin each write with `if_version`).
 
+## Done (2026-10-04): BOX-14 follow-up, stat-driven physique and boxing gear (BOX-25)
+
+- **Physique**: `build-mpfb-boxer.py --variant lean|heavy|balanced` now builds all three (same vertices), and `build-mpfb-models.mjs` merges lean and heavy into `person.glb` as glTF morph targets (`lean`, `heavy`) on every mesh (skin, garments, hair, eyes), 3.2 -> 4.0 MB. `boxer-model.js` `physiqueOf(stats)` (power vs mean of speed and stamina; a 30-point gap is the full shift; even stats = balanced) and `ModelBoxer.setPhysique`. The arena gets `physiques: {red, blue}` from each side's stats (so P2P needs nothing new), the Look preview follows the fighter's stats and updates when training changes them. Render-only, `FighterModel` never reads it. The skeleton stays the balanced one, so animations are unchanged.
+- **Gear**: Look has Bottoms (Jeans / Boxing trunks, `pants_trunks` from CC0 `cortu_jeans_shorts`, tinted by `look.trunks`), Mouthguard (small white insert on the face, drawn in code) and the Wraps colour now also colours gloves. All three go through `normalizeLook` (`bottoms`, `trunks`, `mouthguard`). Sanctioned fights wear padded gloves with white cuffs instead of wraps: `career.js` `isSanctioned(offer)` is true for career fights above tier 0 (block parties stay street); quick fights and P2P use wraps. **That tier rule is my choice**, change it in `isSanctioned` if you want otherwise.
+- **Re-check**: variants differ from balanced by at most 2.1 cm per vertex (lean) and 1.5 cm (heavy); arm and leg bones are unchanged, so clips can only move a limb that far into the garments. Screenshots of the stance, gloves, and hook/body shots at full heavy (`qa/box-25-physiques.png`; use `scripts/shot-stance.mjs --phys=heavy --gloves=1 --punch=hook`) show no visible clipping. Frame time: `measure-boxing.mjs` (rewritten for the new flow, has `--nomorph`) gives 3.8-7 ms CPU/frame at 400 px with or without morphs, i.e. noise, no measurable cost. 285 tests pass, `demo-e2e.mjs` clean.
+- **Untested**: a real phone's frame time, the morphs through P2P between two devices, Look panel at 375 px with the new rows (code only, not screenshotted), night.
+- **Not great yet**: the differences between lean, balanced and heavy are subtle (more in arms and legs than the torso); to exaggerate, rebuild with stronger values in `VARIANTS`. The trunks are short (jean-shorts length) with no waistband stripe; gloves don't wear in the primitive fallback.
+
 ## Done (2026-10-04): more gym drills (BOX-19)
 
 Three new `DRILLS` in `career.js`, each a phone mini-game scored through the same `hitScore`/`drillResult`/`applyDrill` path as the heavy bag: **Speed bag** (speed; fast marker, 14 taps), **Roadwork** (stamina; tap as a closing ring meets its core on a fixed beat, `beatAt`), **Sparring** (ring IQ; a glove loads, slip the other way fast, fixed `SPAR_CUES`, scored by `sparPos`). All deterministic, no randomness. The gym screen now lists every drill as a card with its own Start button; the trainer tip points at the weakest trainable stat, so it now names all four. Files: `career.js`, `index.html` (gym section and CSS), `test/boxing.test.js` (277 tests pass).
@@ -286,13 +294,22 @@ User: the fighters "look weak and crooked" (BOX-14). Before shots showed the Qua
 ## Done (2026-10-04): BOX-14 slice 2, athletic boxer body (shipped live)
 
 `scripts/build-mpfb-boxer.py` now builds an athletic body: `ATHLETE` detail targets (V-shape torso, lats, pecs, thick neck, strong jaw, shoulder/arm/leg muscle), `proportions=0.6`, and a `--variant balanced|lean|heavy` switch (only balanced is shipped; lean/heavy write `person_raw_<variant>.glb`, for slice 3). Garments are inflated 4-6 mm along their normals so the muscle doesn't poke through clothes. `person.glb` rebuilt (`node scripts/build-mpfb-models.mjs`). Before/after: `qa/box-14-before-front.png` vs `qa/box-14-athletic-front.png`/`-side.png`. 272 tests pass. Untested in a real game/phone: frame time with the new mesh, clipping of every punch against the wider shoulders.
-- Still to do for BOX-14: slice 3 (lean/balanced/heavy blended by stats, morph targets), slice 4 (trunks, sanctioned gloves, mouthguard), animation clip re-check.
+- Slice 3, slice 4 and the clip re-check were done in BOX-25 (above).
 
 ## Done (2026-10-04): BOX-18 slice 3, lean into starts, stops and turns (shipped live)
 
 `boxer-model.js` `pose()`: smoothed acceleration of the sim velocity shifts the body up to 3 cm along it (a start drives forward, a stop rocks back, a turn leans into the curve); render-only, feet stay planted. `npm test` 274 pass; `demo-e2e.mjs` clean locally and live. Shipped: claude-quest main 9908bb7, bring-the-ruckus 39c7d47. **Untested by eye**; the 3 cm cap and 8 Hz smoothing are guesses.
 - **Street moves are blocked on BOX-22** (Sim Dev; the sim has no haymaker, overhand, feint, clinch, shove or taunt yet). Animate them after it lands.
 - Still open in BOX-18: CMU mocap footwork, before/after clip, phone frame time.
+
+## Done (2026-10-04): BOX-17 slice 2, medium-angle fighters and the 2D arena (beta)
+
+- Rendered 8 clips per corner in Blender/Cycles (`scripts/render-fighters.py`, `render-all-fighters.sh`): idle_guard, atk_jab/cross/hook, block, hit_head, stagger, ko. Packed by `scripts/pack-sprites.mjs` into `public/boxing/sprites2d/` (16 WebP atlases plus `manifest.json`, 2.99 MB total, 0.75 scale). Day plate: `plates/medium_day.webp` (`scripts/render-plate.mjs`). Shared camera: `camera2d.js`.
+- `arena-2d.js`: canvas compositor driven by `sim.snapshot()` and `impact` events only (render-only). Clip choice and timing from `clips2d.js`; unrendered clips fall back via `resolveClip` (uppercut to hook, body to jab, knockdown to ko). Blue is the mirrored red render.
+- Options, Fight options, View: "2D photoreal (beta)". 3D stays the default. 287 tests pass (2 new: `resolveClip`, `clipFrame`).
+- Smoke: `node scripts/shot-arena2d.mjs` (dev page `dev-arena2d.html`) ran a round in headless Chromium at 375x667 with no console errors; shots in `qa/box-17-arena2d-*.png`.
+- Not done / untested: night plate (falls back to day), ground contact shadow barely visible, no post-pass or looks recolour, no close angles, no crowd animation (crowd is baked into the plate), no real-phone frame time, game flow (not just the dev page) in a browser, P2P with this view.
+- Next: slice 3 (post-pass and looks).
 
 ## BOX-17 plan: photoreal 2D projection (written 2026-10-04, before any rendering)
 
@@ -323,7 +340,7 @@ Nothing is rendered yet. Built so far: `clips2d.js` (pure, render-only: clip cat
 
 ## Next jobs
 
-0. **BOX-17 slice 2**: render the medium-angle fighter clips and the compositor (needs ffmpeg for footage later, not for this slice).
+0. **BOX-17 slice 3**: post-pass and looks (see the plan above). Check slice 2 in the browser first: View, "2D photoreal (beta)".
 
 0b. **Play BOX-13 and the career on a phone** and tell me what feels off (see its untested list).
 
